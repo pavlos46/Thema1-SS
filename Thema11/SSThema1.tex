@@ -1,0 +1,70 @@
+\documentclass{article}
+\usepackage[greek,english]{babel}
+\usepackage[LGR,T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{listings}
+
+\title{Αναφορά για τον Φιλτραρισμό Ηχητικού Σήματος}
+\author{Pavlos Saridis AEM 3732}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Εισαγωγή}
+Στην παρούσα αναφορά παρουσιάζεται ο φιλτραρισμός ενός ηχητικού σήματος με χρήση πεπερασμένης κρουστικής απόκρισης φίλτρου χαμηλής συχνότητας.
+
+\section*{Μεθοδολογία}
+
+Για την υλοποίηση του φιλτραρίσματος χρησιμοποιήθηκε ο κώδικας σε Python που παρατίθεται παρακάτω. Ακολουθήστε τα σχόλια για κατανόηση των βημάτων.
+
+\begin{lstlisting}[language=Python, caption=Κώδικας Python για τον φιλτραρισμό ηχητικού σήματος]
+# Εισαγωγή των απαραίτητων βιβλιοθηκών
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.io import wavfile
+
+# Αλλαγή του Matplotlib backend σε Agg
+import matplotlib
+matplotlib.use('Agg')
+
+# Φόρτωση αρχείου WAV
+samplerate, data = wavfile.read('filtered_output.wav')
+
+# Σχεδιασμός και εφαρμογή του φίλτρου
+def design_lowpass_filter(samplerate, cutoff=0.2, numtaps=300):
+    nyquist = 0.5 * samplerate
+    cutoff_normalized = cutoff / nyquist
+    taps = np.sinc(2 * cutoff_normalized * np.arange(numtaps))
+    taps *= np.blackman(numtaps)
+    taps /= np.sum(taps)
+    return taps
+
+def apply_filter(data, taps):
+    filtered_data = np.convolve(data[:, 0], taps, mode='same')
+    return filtered_data
+
+# Σχεδιασμός του φίλτρου
+taps = design_lowpass_filter(samplerate, cutoff=0.2)
+
+# Εφαρμογή του φίλτρου στο σήμα
+filtered_data = apply_filter(data, taps)
+
+# Προαιρετική, σχεδίαση της συχνοτικής απόκρισης
+w = np.fft.fftfreq(len(taps))
+response = np.fft.fft(taps)
+plt.plot(0.5 * samplerate * w, np.abs(response), 'b')
+plt.xlabel('Συχνότητα (Hz)')
+plt.ylabel('Κέρδος')
+plt.title('Συχνοτική Απόκριση του Φίλτρου')
+plt.ylim(-0.05, 1.05)
+plt.grid(True)
+plt.savefig('frequency_response.png')
+plt.close()
+
+# Αποθήκευση του φιλτραρισμένου αρχείου
+wavfile.write('filtered_output.wav', samplerate, filtered_data.astype(data.dtype))
+\end{lstlisting}
+
+\end{document}
